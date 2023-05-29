@@ -1,9 +1,9 @@
-service: notes-api-serverlessv3
-frameworkVersion: '3'
+service: notes-api-dev
+frameworkVersion: '2'
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs14.x
   lambdaHashingVersion: 20201221
   stage: dev
   region: ap-south-1

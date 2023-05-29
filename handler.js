@@ -1,100 +1,82 @@
 'use strict';
-
-const {
-  DynamoDBClient,
-  PutItemCommand,
-  ScanCommand,
-  UpdateItemCommand,
-  DeleteItemCommand,
-} = require('@aws-sdk/client-dynamodb');
-
-const client = new DynamoDBClient({ region: process.env.AWS_REGION });
-
+const DynamoDB = require('aws-sdk/clients/dynamodb');
+const documentClient = new DynamoDB.DocumentClient({ region: 'us-east-1' });
 const NOTES_TABLE_NAME = process.env.NOTES_TABLE_NAME;
 
-const send = (statusCode, body) => {
-  return { statusCode, body: JSON.stringify(body) };
+const send = (statusCode, data) => {
+  return {
+    statusCode,
+    body: JSON.stringify(data),
+  };
 };
-
 module.exports.createNote = async (event, context, cb) => {
-  context.callbackWaitsForEmptyEventLoop = false;
-
-  const { id, title, body } = JSON.parse(event.body);
+  let data = JSON.parse(event.body);
   try {
     const params = {
       TableName: NOTES_TABLE_NAME,
       Item: {
-        notesId: { S: id },
-        title: { S: title },
-        body: { S: body },
+        notesId: data.id,
+        title: data.title,
+        body: data.body,
       },
       ConditionExpression: 'attribute_not_exists(notesId)',
     };
-
-    await client.send(new PutItemCommand(params));
-    return send(201, { id, title, body });
-  } catch (e) {
-    return send(500, e.message);
+    await documentClient.put(params).promise();
+    cb(null, send(201, data));
+  } catch (err) {
+    cb(null, send(500, err.message));
   }
 };
 
 module.exports.updateNote = async (event, context, cb) => {
-  context.callbackWaitsForEmptyEventLoop = false;
-
-  const notesId = event.pathParameters.id;
+  let notesId = event.pathParameters.id;
   let data = JSON.parse(event.body);
-
   try {
     const params = {
       TableName: NOTES_TABLE_NAME,
-      Key: { notesId: { S: notesId } },
-      UpdateExpression: `set #title = :title, #body = :body`,
+      Key: { notesId },
+      UpdateExpression: 'set #title = :title, #body = :body',
       ExpressionAttributeNames: {
         '#title': 'title',
         '#body': 'body',
       },
       ExpressionAttributeValues: {
-        ':title': { S: data.title },
-        ':body': { S: data.body },
+        ':title': data.title,
+        ':body': data.body,
       },
       ConditionExpression: 'attribute_exists(notesId)',
     };
-    await client.send(new UpdateItemCommand(params));
-
-    return send(200, data);
+    await documentClient.update(params).promise();
+    cb(null, send(200, data));
   } catch (err) {
-    return send(500, err.message);
+    cb(null, send(500, err.message));
   }
 };
 
 module.exports.deleteNote = async (event, context, cb) => {
-  context.callbackWaitsForEmptyEventLoop = false;
-
-  const { id: notesId } = event.pathParameters;
-
+  let notesId = event.pathParameters.id;
   try {
     const params = {
       TableName: NOTES_TABLE_NAME,
-      Key: { notesId: { S: notesId } },
+      Key: { notesId },
       ConditionExpression: 'attribute_exists(notesId)',
     };
-    await client.send(new DeleteItemCommand(params));
-
-    return send(200, `A note with id  ${notesId} has been deleted!`);
-  } catch (e) {
-    return send(500, e.message);
+    await documentClient.delete(params).promise();
+    cb(null, send(200, notesId));
+  } catch (err) {
+    cb(null, send(500, err.message));
   }
 };
 
 module.exports.getAllNotes = async (event, context, cb) => {
-  context.callbackWaitsForEmptyEventLoop = false;
-
-  const params = { TableName: NOTES_TABLE_NAME };
+  console.log(JSON.stringify(event));
   try {
-    const notes = await client.send(new ScanCommand(params));
-
-    return send(200, notes);
-  } catch (e) {
-    return send(500, e.message);
+    const params = {
+      TableName: NOTES_TABLE_NAME,
+    };
+    const notes = await documentClient.scan(params).promise();
+    cb(null, send(200, notes));
+  } catch (err) {
+    cb(null, send(500, err.message));
   }
 };
