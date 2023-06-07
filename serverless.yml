@@ -10,6 +10,10 @@ provider:
 functions:
   authorizer:
     handler: authorizer.handler
+    environment:
+      COGNITO_USERPOOL_ID: !Ref cognitoUserPool
+      COGNITO_WEBCLIENT_ID: !Ref userPoolWebClient
+
   createNote:
     handler: handler.createNote
     environment:
@@ -23,7 +27,7 @@ functions:
       - http:
           method: post
           path: notes
-          authorizer: authorier
+          authorizer: authorizer
 
   updateNote:
     handler: handler.updateNote
@@ -38,7 +42,7 @@ functions:
       - http:
           method: put
           path: notes/{id}
-          authorizer: authorier
+          authorizer: authorizer
 
   deleteNote:
     handler: handler.deleteNote
@@ -53,7 +57,7 @@ functions:
       - http:
           method: delete
           path: notes/{id}
-          authorizer: authorier
+          authorizer: authorizer
 
   getAllNotes:
     handler: handler.getAllNotes
@@ -68,22 +72,13 @@ functions:
       - http:
           method: get
           path: notes
-          authorizer: authorier
+          authorizer:
+            name: userpool_authorizer
+            arn: ${ssm:/notes/dev/userPoolId}
 
 plugins:
   - serverless-iam-roles-per-function
 
 # you can add CloudFormation resource templates here
 resources:
-  Resources:
-    notesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: notes
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: notesId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: notesId
-            KeyType: HASH
+  Resources: ${file(resources.yml)}
