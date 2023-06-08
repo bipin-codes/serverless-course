@@ -4,7 +4,7 @@ frameworkVersion: '2'
 provider:
   name: aws
   runtime: nodejs14.x
-  stage: dev
+  stage: ${opt:stage, 'dev'}
   region: ap-south-1
 
 functions:
@@ -74,7 +74,8 @@ functions:
           path: notes
           authorizer:
             name: userpool_authorizer
-            arn: ${ssm:/notes/dev/userPoolId}
+            type: COGNITO_USER_POOLS
+            arn: !GetAtt cognitoUserPool.Arn
 
 plugins:
   - serverless-iam-roles-per-function
